@@ -1,0 +1,4 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#C0392B;--dark:#1a1a2e;--text:#1c1c2e;--muted:#666}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#f5f5f7;color:var(--text);font-size:14px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}

@@ -33,9 +33,10 @@ export default function Announcements() {
     if (!form.title || !form.content) return showToast('Please fill in all fields');
     try {
       await announcementAPI.create({
-        ...form,
-        authorName: user.fullName,
-        datePosted: new Date().toISOString().split('T')[0]
+        title: form.title,
+        message: form.content,
+        category: form.priority,
+        authorId: user.id
       });
       setModal(false);
       setForm({ title: '', content: '', priority: 'MEDIUM' });
@@ -79,7 +80,7 @@ export default function Announcements() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>{n.title}</h3>
-                <Badge status={n.priority} />
+                <Badge status={n.category} />
               </div>
               {isAdmin && (
                 <button 
@@ -92,12 +93,12 @@ export default function Announcements() {
             </div>
 
             <p style={{ color: '#374151', fontSize: 13, lineHeight: '1.5', whiteSpace: 'pre-wrap', marginBottom: '1rem' }}>
-              {n.content}
+              {n.message}
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', fontSize: 11, color: '#6b7280' }}>
-              <span>By <strong style={{ color: '#1c1c2e' }}>{n.authorName}</strong></span>
-              <span>{n.datePosted}</span>
+              <span>By <strong style={{ color: '#1c1c2e' }}>User #{n.authorId}</strong></span>
+              <span>{new Date(n.createdAt).toLocaleDateString()}</span>
             </div>
           </Card>
         ))}

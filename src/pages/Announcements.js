@@ -36,7 +36,8 @@ export default function Announcements() {
         title: form.title,
         message: form.content,
         category: form.priority,
-        authorId: user.id
+        authorId: user.id,
+        authorName: user.fullName
       });
       setModal(false);
       setForm({ title: '', content: '', priority: 'MEDIUM' });
@@ -97,7 +98,7 @@ export default function Announcements() {
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', fontSize: 11, color: '#6b7280' }}>
-              <span>By <strong style={{ color: '#1c1c2e' }}>User #{n.authorId}</strong></span>
+              <span>By <strong style={{ color: '#1c1c2e' }}>{n.authorName}</strong></span>
               <span>{new Date(n.createdAt).toLocaleDateString()}</span>
             </div>
           </Card>

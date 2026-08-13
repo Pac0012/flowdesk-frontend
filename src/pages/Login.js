@@ -1,6 +1,7 @@
 import React,{useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../context/AuthContext';
+import {authAPI} from '../services/api';
 export default function Login(){
   // Add this state at the top with your other states
   const [isSignup, setIsSignup] = useState(false);

@@ -72,9 +72,9 @@ export const attendanceAPI = {
 
 // 7. Company Announcements & Notice Board
 export const announcementAPI = {
-  getAll: () => api.get('/announcements'),
-  create: data => api.post('/announcements', data),
-  delete: id => api.delete(`/announcements/${id}`)
+  getAll: () => api.get('/notices'),
+  create: data => api.post('/notices', data),
+  delete: id => api.delete(`/notices/${id}`)
 };
 
 

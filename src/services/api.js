@@ -47,18 +47,15 @@ export const userAPI = {
 // 4. Monthly Progress Report Form Management
 export const reportAPI = {
   getAll: () => api.get('/reports'),
-  submit: formData => api.post('/reports', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  review: (id, data) => api.patch(`/reports/${id}/review`, data)
+  submit: formData => api.post('/reports', formData), // Automatic multipart boundary assignment
+  review: (id, data) => api.patch(`/reports/${id}/review`, data),
+  download: id => api.get(`/reports/${id}/download`, { responseType: 'blob' })
 };
 
 // 5. Weekly Work Logsheet Handling
 export const logAPI = {
   getAll: () => api.get('/logsheets'),
-  submit: formData => api.post('/logsheets', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  submit: formData => api.post('/logsheets', formData),
   approve: id => api.patch(`/logsheets/${id}/approve`, {})
 };
 
@@ -76,6 +73,5 @@ export const announcementAPI = {
   create: data => api.post('/notices', data),
   delete: id => api.delete(`/notices/${id}`)
 };
-
 
 export default api;

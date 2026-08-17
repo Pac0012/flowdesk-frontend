@@ -4,7 +4,7 @@ import { attendanceAPI } from '../services/api';
 import { Card, CardHeader, Badge, Btn, Spinner, Toast, Avatar } from '../components/Shared';
 
 export default function Attendance() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ msg: '', show: false });
@@ -28,8 +28,14 @@ export default function Attendance() {
           attendanceAPI.getTodayStatus(),
           attendanceAPI.getHistory()
         ]);
-        setHasAttendedToday(statusRes.data.attended);
-        setPersonalHistory(historyRes.data);
+        const hasAttended = statusRes.data.some(
+            record => record.userId === user?.userId
+        );
+
+        setHasAttendedToday(hasAttended);
+        setPersonalHistory(
+            historyRes.data.filter(record => record.userId === user?.userId)
+        );
       }
     } catch (err) {
       showToast('Failed to load attendance records.');
@@ -48,7 +54,7 @@ export default function Attendance() {
   const handleCheckIn = async () => {
     setSubmitting(true);
     try {
-      await attendanceAPI.checkIn();
+      await attendanceAPI.checkIn(user.userId);
       setHasAttendedToday(true);
       showToast('Attendance successfully marked for today!');
       loadAttendanceData();
@@ -100,8 +106,8 @@ export default function Attendance() {
             return (
               <Card key={dateStr} style={{ marginBottom: '2rem' }}>
                 <CardHeader 
-                  title={displayDate} 
-                  action={<span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{recordsForDay.length} Present</span>} 
+                  title={displayDate}
+                  action={<span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{recordsForDay.filter(record => record.status === 'PRESENT').length} Present</span>}
                 />
                 <div style={{ overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -125,7 +131,7 @@ export default function Attendance() {
                             </div>
                           </td>
                           <td style={{ ...td, color: '#6b7280' }}>{record.jobTitle || '—'}</td>
-                          <td style={td}><Badge status="PRESENT" /></td>
+                          <td style={td}><Badge status={record.status} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -181,7 +187,7 @@ export default function Attendance() {
               {personalHistory.map(record => (
                 <tr key={record.id}>
                   <td style={{ ...td, fontWeight: 500 }}>{record.date}</td>
-                  <td style={td}><Badge status="PRESENT" /></td>
+                  <td style={td}><Badge status={record.status} /></td>
                 </tr>
               ))}
             </tbody>

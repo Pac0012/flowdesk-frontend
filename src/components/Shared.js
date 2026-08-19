@@ -11,7 +11,8 @@ const bdgMap={
   REVIEWED:{bg:'#dcfce7',c:'#166534',l:'Reviewed'},
   APPROVED:{bg:'#dcfce7',c:'#166534',l:'Approved'},
   REJECTED:{bg:'#fee2e2',c:'#991b1b',l:'Rejected'},
-  PRESENT:{bg:'#dcfce7',c:'#166534',l:'Present'} // New tag added here
+  PRESENT:{bg:'#dcfce7',c:'#166534',l:'Present'},
+  ABSENT:{bg:'#fee2e2',c:'#dc2626',l:'Absent'} // New tag added here
 };
 
 export function Badge({status}){const s=bdgMap[status]||{bg:'#f3f4f6',c:'#6b7280',l:status};return <span style={{background:s.bg,color:s.c,padding:'2px 10px',borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:'nowrap'}}>{s.l}</span>;}

@@ -62,9 +62,16 @@ export const logAPI = {
 // 6. Role-Aware Attendance Register Services
 export const attendanceAPI = {
   getTodayStatus: () => api.get('/attendance/today'),
-  checkIn: () => api.post('/attendance/check-in', {}),
-  getHistory: () => api.get('/attendance/history'),
-  getAdminMasterLog: () => api.get('/attendance/admin/today')
+
+  checkIn: (userId, status = 'PRESENT') =>
+      api.post('/attendance/mark', {
+        userId,
+        status
+      }),
+
+  getHistory: () => api.get('/attendance/today'),
+
+  getAdminMasterLog: () => api.get('/attendance/today')
 };
 
 // 7. Company Announcements & Notice Board

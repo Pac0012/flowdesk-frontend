@@ -38,9 +38,11 @@ export const authAPI = {
 // 2. Distributed Task Operations (Mapped to Spring Boot Endpoints)
 export const taskAPI = {
   getAll: () => api.get('/tasks'),
-  assign: data => api.post('/tasks/assign', data), // Aligned with TaskController @PostMapping("/assign")
+  assign: data => api.post('/tasks/assign', data),
+  update: (id, data) => api.put(`/tasks/${id}`, data),
+  updateSprint: (id, sprintId) => api.patch(`/tasks/${id}/sprint`, { sprintId }),
   updateStatus: (id, status) => api.patch(`/tasks/${id}/status`, { status }),
-  rate: (id, data) => api.patch(`/tasks/${id}/rate`, data), // Aligned with TaskController @PatchMapping("/{id}/rate")
+  rate: (id, data) => api.patch(`/tasks/${id}/rate`, data),
   delete: id => api.delete(`/tasks/${id}`)
 };
 

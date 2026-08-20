@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { taskAPI, userAPI } from '../services/api';
 import { Badge, Stars, Avatar, Modal, Field, Input, Select, Btn, Spinner, Toast } from '../components/Shared';
@@ -15,10 +15,10 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('planning'); // 'planning' | 'active-sprint'
+  const [activeTab, setActiveTab] = useState('planning');
 
   const [sprints, setSprints] = useState([
-    { id: 1, name: 'Sprint 1', durationDays: 14, status: 'PLANNED', goal: 'Core Architecture & APIs' },
+    { id: 1, name: 'Sprint 1', durationDays: 14, status: 'ACTIVE', goal: 'Core Architecture & APIs' },
     { id: 2, name: 'Sprint 2', durationDays: 10, status: 'PLANNED', goal: 'UI Refinement & Testing' }
   ]);
   const [activeSprintId, setActiveSprintId] = useState(1);
@@ -26,14 +26,17 @@ export default function Tasks() {
   const [newSprintDays, setNewSprintDays] = useState(14);
   const [draggedTaskId, setDraggedTaskId] = useState(null);
 
+  // Modal State
   const [modal, setModal] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [form, setForm] = useState({
     title: '',
     description: '',
     priority: 'MEDIUM',
     dueDate: '',
     assignedToId: '',
-    storyPoints: 3
+    storyPoints: 3,
+    sprintId: null
   });
   const [toast, setToast] = useState({ msg: '', show: false });
 
@@ -47,37 +50,80 @@ export default function Tasks() {
       .getAll()
       .then((r) => {
         setTasks(
-          r.data.map((t) => ({
+          (r.data || []).map((t) => ({
             ...t,
-            sprintId: t.sprintId || null,
+            sprintId: t.sprintId != null ? Number(t.sprintId) : null,
             storyPoints: t.storyPoints || 3,
-            status: t.status === 'NOT_STARTED' ? 'INCOMPLETE' : t.status
+            status: t.status === 'NOT_STARTED' ? 'INCOMPLETE' : (t.status || 'INCOMPLETE')
           }))
         );
+      })
+      .catch((err) => {
+        console.error('Failed to load tasks:', err);
+        showToast('Error loading tasks from server');
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     load();
-    if (isAdmin) userAPI.getTeam().then((r) => setTeam(r.data));
+    if (isAdmin) userAPI.getTeam().then((r) => setTeam(r.data || []));
   }, [isAdmin]);
 
-  const assignTask = async () => {
+  const openCreateModal = () => {
+    setEditingTaskId(null);
+    setForm({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assignedToId: '', storyPoints: 3, sprintId: null });
+    setModal(true);
+  };
+
+  const openEditModal = (task) => {
+    setEditingTaskId(task.id);
+    setForm({
+      title: task.title || '',
+      description: task.description || '',
+      priority: task.priority || 'MEDIUM',
+      dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+      assignedToId: task.assignedToId || '',
+      storyPoints: task.storyPoints || 3,
+      sprintId: task.sprintId || null
+    });
+    setModal(true);
+  };
+
+  const saveTask = async () => {
     if (!form.title || !form.assignedToId) return showToast('Please provide a title and assignee');
+
     try {
-      await taskAPI.assign({
+      const payload = {
         ...form,
         assignedToId: Number(form.assignedToId),
         storyPoints: Number(form.storyPoints) || 3,
-        status: 'INCOMPLETE'
-      });
+        sprintId: form.sprintId ? Number(form.sprintId) : null
+      };
+
+      if (editingTaskId) {
+        await taskAPI.update(editingTaskId, payload);
+        showToast('Task updated successfully!');
+      } else {
+        await taskAPI.assign({ ...payload, status: 'INCOMPLETE' });
+        showToast('Task added to Backlog!');
+      }
+
       setModal(false);
-      setForm({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assignedToId: '', storyPoints: 3 });
       load();
-      showToast('Task added to Backlog!');
     } catch (err) {
-      showToast('Failed to assign task');
+      showToast(editingTaskId ? 'Failed to update task' : 'Failed to create task');
+    }
+  };
+
+  const deleteTask = async (id) => {
+    if (!window.confirm('Delete this task?')) return;
+    try {
+      await taskAPI.delete(id);
+      showToast('Task deleted');
+      load();
+    } catch (err) {
+      showToast('Failed to delete task');
     }
   };
 
@@ -97,51 +143,66 @@ export default function Tasks() {
   };
 
   const startSprint = (sprintId) => {
-    setSprints(sprints.map((s) => (s.id === sprintId ? { ...s, status: 'ACTIVE' } : s)));
-    setActiveSprintId(sprintId);
+    setSprints(sprints.map((s) => (Number(s.id) === Number(sprintId) ? { ...s, status: 'ACTIVE' } : s)));
+    setActiveSprintId(Number(sprintId));
     setActiveTab('active-sprint');
     showToast('Sprint started!');
   };
 
+  // Drag and Drop Handlers
   const handleDragStart = (e, taskId) => {
-    setDraggedTaskId(taskId);
+    setDraggedTaskId(Number(taskId));
     e.dataTransfer.setData('text/plain', String(taskId));
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
+  const handleDragOver = (e) => e.preventDefault();
 
-  const handleDropToBacklog = (e) => {
+  const handleDropToBacklog = async (e) => {
     e.preventDefault();
     if (!draggedTaskId) return;
-    setTasks((prev) => prev.map((t) => (t.id === draggedTaskId ? { ...t, sprintId: null } : t)));
+    const id = draggedTaskId;
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, sprintId: null } : t)));
     setDraggedTaskId(null);
-    showToast('Moved back to Product Backlog');
+
+    try {
+      await taskAPI.updateSprint(id, null);
+      showToast('Moved to Product Backlog');
+    } catch (err) {
+      showToast('Failed to sync sprint change');
+      load();
+    }
   };
 
-  const handleDropToSprint = (e, targetSprintId) => {
+  const handleDropToSprint = async (e, targetSprintId) => {
     e.preventDefault();
     if (!draggedTaskId) return;
-    setTasks((prev) => prev.map((t) => (t.id === draggedTaskId ? { ...t, sprintId: targetSprintId } : t)));
+    const id = draggedTaskId;
+    const sId = Number(targetSprintId);
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, sprintId: sId } : t)));
     setDraggedTaskId(null);
-    showToast('Moved to Sprint');
+
+    try {
+      await taskAPI.updateSprint(id, sId);
+      showToast('Moved to Sprint & saved');
+    } catch (err) {
+      showToast('Failed to sync sprint change');
+      load();
+    }
   };
 
   const handleDropToLane = async (e, targetStatus) => {
     e.preventDefault();
     if (!draggedTaskId) return;
-
-    setTasks((prev) => prev.map((t) => (t.id === draggedTaskId ? { ...t, status: targetStatus } : t)));
+    const id = draggedTaskId;
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: targetStatus } : t)));
+    setDraggedTaskId(null);
 
     try {
-      await taskAPI.updateStatus(draggedTaskId, targetStatus);
+      await taskAPI.updateStatus(id, targetStatus);
       showToast(`Status updated to ${KANBAN_LANES[targetStatus]?.title || targetStatus}`);
     } catch (err) {
       showToast('Error syncing status');
       load();
-    } finally {
-      setDraggedTaskId(null);
     }
   };
 
@@ -152,14 +213,15 @@ export default function Tasks() {
 
   if (loading) return <Spinner />;
 
-  const backlogTasks = tasks.filter((t) => !t.sprintId);
-  const activeSprint = sprints.find((s) => s.id === activeSprintId);
-  const activeSprintTasks = tasks.filter((t) => t.sprintId === activeSprintId);
+  // Robust Backlog & Sprint Filtering
+  const validSprintIds = sprints.map((s) => Number(s.id));
+  const backlogTasks = tasks.filter((t) => t.sprintId === null || !validSprintIds.includes(Number(t.sprintId)));
+  const activeSprint = sprints.find((s) => Number(s.id) === Number(activeSprintId));
+  const activeSprintTasks = tasks.filter((t) => Number(t.sprintId) === Number(activeSprintId));
 
   return (
     <div style={{ padding: '1.75rem', background: '#090D16', minHeight: '100vh', color: '#f1f5f9' }}>
-      
-      {/* Top Header & Controls */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -205,7 +267,7 @@ export default function Tasks() {
           </div>
 
           {isAdmin && (
-            <Btn onClick={() => setModal(true)} style={{ background: '#38bdf8', color: '#090D16', fontWeight: 700 }}>
+            <Btn onClick={openCreateModal} style={{ background: '#38bdf8', color: '#090D16', fontWeight: 700 }}>
               <i className="ti ti-plus"></i> New Task
             </Btn>
           )}
@@ -215,7 +277,6 @@ export default function Tasks() {
       {/* ===================== VIEW 1: PLANNING ===================== */}
       {activeTab === 'planning' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '1.5rem' }}>
-          
           {/* Backlog Column */}
           <div style={{ background: '#111726', border: '1px solid #1e293b', borderRadius: 14, padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -266,9 +327,20 @@ export default function Tasks() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <span style={{ fontWeight: 600, fontSize: 13 }}>{task.title}</span>
-                      <span style={{ fontSize: 10, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>
-                        {task.storyPoints} SP
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 10, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>
+                          {task.storyPoints} SP
+                        </span>
+                        {isAdmin && (
+                          <button
+                            onClick={() => openEditModal(task)}
+                            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: 0 }}
+                            title="Edit Task"
+                          >
+                            ✏️
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{task.description?.substring(0, 50)}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 11, borderTop: '1px solid #1e293b', paddingTop: 8 }}>
@@ -307,7 +379,7 @@ export default function Tasks() {
             </form>
 
             {sprints.map((s) => {
-              const sprintTasks = tasks.filter((t) => t.sprintId === s.id);
+              const sprintTasks = tasks.filter((t) => Number(t.sprintId) === Number(s.id));
               const totalPoints = sprintTasks.reduce((acc, t) => acc + (t.storyPoints || 0), 0);
 
               return (
@@ -384,9 +456,20 @@ export default function Tasks() {
                           }}
                         >
                           <span style={{ fontSize: 12, fontWeight: 500 }}>{task.title}</span>
-                          <span style={{ fontSize: 10, background: 'rgba(56,189,248,0.1)', color: '#38bdf8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-                            {task.storyPoints} SP
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10, background: 'rgba(56,189,248,0.1)', color: '#38bdf8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                              {task.storyPoints} SP
+                            </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => openEditModal(task)}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))
                     )}
@@ -398,7 +481,7 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* ===================== VIEW 2: ACTIVE KANBAN BOARD ===================== */}
+      {/* ===================== VIEW 2: ACTIVE KANBAN ===================== */}
       {activeTab === 'active-sprint' && (
         <div>
           <div style={{ background: '#111726', border: '1px solid #1e293b', borderRadius: 14, padding: '1rem 1.25rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -455,7 +538,17 @@ export default function Tasks() {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <Badge status={task.priority} />
-                          <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700 }}>{task.storyPoints} SP</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700 }}>{task.storyPoints} SP</span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => openEditModal(task)}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}
+                              >
+                                ✏️
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', marginBottom: 4 }}>{task.title}</div>
                         <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{task.description?.substring(0, 60)}</div>
@@ -477,8 +570,8 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Task Creation Modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title="Add Task to Product Backlog">
+      {/* Unified Create / Edit Modal */}
+      <Modal open={modal} onClose={() => setModal(false)} title={editingTaskId ? 'Edit User Story' : 'Add Task to Backlog'}>
         <Field label="Task Title">
           <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Enter task summary" />
         </Field>
@@ -509,6 +602,16 @@ export default function Tasks() {
             <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
           </Field>
         </div>
+        <Field label="Sprint Assignment">
+          <Select value={form.sprintId || ''} onChange={(e) => setForm({ ...form, sprintId: e.target.value ? Number(e.target.value) : null })}>
+            <option value="">Product Backlog (Unassigned)</option>
+            {sprints.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Description">
           <textarea
             value={form.description}
@@ -517,13 +620,20 @@ export default function Tasks() {
             style={{ width: '100%', padding: '9px 13px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 70 }}
           />
         </Field>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: '1rem' }}>
-          <Btn variant="outline" onClick={() => setModal(false)}>
-            Cancel
-          </Btn>
-          <Btn onClick={assignTask} style={{ background: '#38bdf8', color: '#090D16', fontWeight: 700 }}>
-            <i className="ti ti-check"></i> Add to Backlog
-          </Btn>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginTop: '1rem' }}>
+          {editingTaskId && isAdmin ? (
+            <Btn variant="outline" onClick={() => deleteTask(editingTaskId)} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
+              Delete
+            </Btn>
+          ) : <div />}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="outline" onClick={() => setModal(false)}>
+              Cancel
+            </Btn>
+            <Btn onClick={saveTask} style={{ background: '#38bdf8', color: '#090D16', fontWeight: 700 }}>
+              <i className="ti ti-check"></i> {editingTaskId ? 'Save Changes' : 'Add to Backlog'}
+            </Btn>
+          </div>
         </div>
       </Modal>
 

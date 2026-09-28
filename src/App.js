@@ -12,8 +12,25 @@ import Announcements from './pages/Announcements';
 
 function NavItem({ to, icon, label }) {
   return (
-    <NavLink to={to} style={({ isActive }) => ({ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', cursor: 'pointer', fontSize: 13, color: isActive ? '#C0392B' : 'rgba(255,255,255,0.55)', borderLeft: isActive ? '2px solid #C0392B' : '2px solid transparent', background: isActive ? 'rgba(192,57,43,0.08)' : 'transparent', textDecoration: 'none', fontWeight: isActive ? 500 : 400, transition: 'all .15s' })}>
-      <i className={`ti ti-${icon}`} style={{ fontSize: 16 }}></i>{label}
+    <NavLink 
+      to={to} 
+      style={({ isActive }) => ({ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 8, 
+        padding: '6px 14px', 
+        fontSize: 13, 
+        color: '#000', 
+        background: isActive ? '#ffde59' : '#fff', 
+        border: '2px solid #000', 
+        borderRadius: 6,
+        textDecoration: 'none', 
+        fontWeight: 800, 
+        boxShadow: isActive ? '2px 2px 0px #000' : 'none',
+        transition: 'all 0.1s ease' 
+      })}
+    >
+      <i className={`ti ti-${icon}`} style={{ fontSize: 15 }}></i>{label}
     </NavLink>
   );
 }
@@ -22,41 +39,87 @@ function Layout() {
   const { user, logout, isAdmin } = useAuth();
   if (!user) return <Navigate to="/" replace />;
   const ini = user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <div style={{ width: 220, background: '#1a1a2e', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
-        <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>Flow<span style={{color: '#C0392B'}}>Desk</span></span>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#fffdf0' }}>
+      
+      {/* Neo-Brutalist Top Header Navbar */}
+      <header style={{ 
+        background: '#fff', 
+        borderBottom: '3px solid #000', 
+        padding: '0.85rem 2rem', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        boxShadow: '0px 4px 0px #000', 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 1000,
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ 
+            background: '#ffde59', 
+            border: '2px solid #000', 
+            padding: '4px 10px', 
+            fontWeight: 800, 
+            fontSize: 14, 
+            boxShadow: '2px 2px 0px #000', 
+            borderRadius: 6 
+          }}>
+            FD
+          </span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: '#000', letterSpacing: '-0.02em' }}>
+            Flow<span style={{ color: '#ec4899' }}>Desk</span>
+          </span>
         </div>
-        
-        <div style={{ padding: '8px 0' }}>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', padding: '6px 16px 3px', textTransform: 'uppercase', letterSpacing: '.7px' }}>Main</div>
+
+        {/* Navigation Links */}
+        <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <NavItem to="/dashboard" icon="layout-dashboard" label="Dashboard" />
           <NavItem to="/announcements" icon="bell" label="Notice Board" />
           <NavItem to="/tasks" icon="checklist" label="Tasks" />
           <NavItem to="/attendance" icon="calendar-check" label="Attendance" />
           {isAdmin && <NavItem to="/team" icon="users" label="Team" />}
-        </div>
-
-        <div style={{ padding: '8px 0' }}>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', padding: '6px 16px 3px', textTransform: 'uppercase', letterSpacing: '.7px' }}>Submissions</div>
           <NavItem to="/reports" icon="file-description" label="Reports" />
           <NavItem to="/logsheets" icon="clock" label="Logsheets" />
-        </div>
+        </nav>
 
-        <div style={{ marginTop: 'auto', padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(192,57,43,0.3)', color: '#C0392B', display: 'flex', alignItems: 'center', justifycontent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{ini}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.fullName}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{user.role === 'ADMIN' ? 'Administrator' : 'Team Member'}</div>
+        {/* User Profile & Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fffdf0', border: '2px solid #000', padding: '4px 10px', borderRadius: 8, boxShadow: '2px 2px 0px #000' }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#ffde59', border: '1.5px solid #000', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>
+              {ini}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#000', lineHeight: 1.2 }}>{user.fullName}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#475569' }}>{user.role === 'ADMIN' ? 'Admin' : 'Member'}</div>
+            </div>
           </div>
-          <button onClick={logout} title="Sign out" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}>
+          <button 
+            onClick={logout} 
+            title="Sign out" 
+            style={{ 
+              background: '#ff914d', 
+              border: '2px solid #000', 
+              color: '#000', 
+              cursor: 'pointer', 
+              fontSize: 14, 
+              fontWeight: 800,
+              padding: '6px 12px',
+              borderRadius: 6,
+              boxShadow: '2px 2px 0px #000'
+            }}
+          >
             <i className="ti ti-logout"></i>
           </button>
         </div>
-      </div>
+      </header>
 
-      <div style={{ flex: 1, overflow: 'auto', background: '#f9fafb' }}>
+      {/* Main Content View Area */}
+      <main style={{ flex: 1, overflow: 'auto', background: '#fffdf0' }}>
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/announcements" element={<Announcements />} />
@@ -67,14 +130,15 @@ function Layout() {
           <Route path="/logsheets" element={<Logsheets />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </div>
+      </main>
+
     </div>
   );
 }
 
 function AuthGuard() {
   const { user, loading } = useAuth();
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'center', height: '100vh', background: '#0f0c29' }}><div style={{ width: 36, height: 36, border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid #C0392B', borderRadius: '50%', animation: 'spin .7s linear infinite' }}></div><style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style></div>;
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#090D16' }}><div style={{ width: 36, height: 36, border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid #ffde59', borderRadius: '50%', animation: 'spin .7s linear infinite' }}></div><style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style></div>;
   return user ? <Navigate to="/dashboard" replace /> : <Login />;
 }
 
